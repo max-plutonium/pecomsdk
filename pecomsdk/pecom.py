@@ -119,6 +119,7 @@ class PecomCabinet(object):
     
     def findbytitle(self, city):
         result = []
+	e = None
         data = { 'title' : city }
         try:
             res = self.call('branches', 'findbytitle', data)
