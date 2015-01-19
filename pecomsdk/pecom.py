@@ -55,7 +55,7 @@ class PecomCabinet(object):
     # CURL IO buffer
     __buffer = None
     
-    def __init__(self, api_login, api_key, api_url, curl_opts={}):
+    def __init__(self, api_login, api_key, api_url=None, curl_opts={}):
         """
         Cabinet constructor 
         required parameters: api_login, api_key, api_url
@@ -116,3 +116,21 @@ class PecomCabinet(object):
         self.__buffer.truncate(0)
         self.__buffer.seek(0)
         return result
+    
+    def findbytitle(self, city):
+        result = []
+        data = { 'title' : city }
+        try:
+            res = self.call('branches', 'findbytitle', data)
+        except PecomCabinetException(e):
+            return False, e
+        if res['success']:
+            for city in res['items']:
+                result.append(((city['cityId'] or city['branchId']),
+                              city['branchTitle'],
+                              city['cityTitle'],
+                              ))
+            return result, 0
+        else:
+            return False, 'not_found'
+        
