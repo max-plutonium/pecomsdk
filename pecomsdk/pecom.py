@@ -92,6 +92,9 @@ class PecomCabinet(object):
             self.__buffer.close()
             
     def call(self, controller, action, data, assoc=False):
+        """Makes a call to remote API. 
+        
+        """
         result = None
         #if self.__buffer.closed:
         #    self.__buffer = BytesIO()
@@ -118,13 +121,18 @@ class PecomCabinet(object):
         return result
     
     def findbytitle(self, city):
+        """
+        Finds PEC city code by title given.
+        Return tuple (result, error), where result is a list of tuples
+        (cityId, branchtitle, cityTitle) 
+        See: https://kabinet.pecom.ru/api/v1/help/branches#toc-method-findbytitle
+        """
         result = []
-	e = None
         data = { 'title' : city }
         try:
             res = self.call('branches', 'findbytitle', data)
-        except PecomCabinetException(e):
-            return False, e
+        except PecomCabinetException as e:
+            return None, e
         if res['success']:
             for city in res['items']:
                 result.append(((city['cityId'] or city['branchId']),
@@ -133,5 +141,21 @@ class PecomCabinet(object):
                               ))
             return result, 0
         else:
-            return False, 'not_found'
+            return None, 'not_found'
         
+    def get_branches(self):
+        """
+        Returns a tuple of (list, error) of all PEC branches 
+        and cities in the native API format.
+        See: https://kabinet.pecom.ru/api/v1/help/branches#toc-method-all
+        """
+        res = []
+        data = {}
+        try:
+            res = self.call('branches', 'all', data)
+        except PecomCabinetException as e:
+            return None, e
+        if res['branches']:
+            return res['branches'], 0
+        else:
+            return None, 'no_branches_found'
