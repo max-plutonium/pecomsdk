@@ -22,6 +22,39 @@ API_SSL_KEYFILE = location('cacert-kabinet_pecom_ru.pem')
 API_VERSION = '1.0'
 API_BASE_URL = 'https://kabinet.pecom.ru/api/v1/'
 
+# Source: https://kabinet.pecom.ru/api/v1/help/calculator#toc-method-calculateprice
+PECOM_CALC_OPTIONS = { 
+   "senderCityId": '', # Код города отправителя [Number]
+   "receiverCityId": '', # Код города получателя [Number]
+   "isOpenCarSender": False, # Растентовка отправителя [Boolean]
+   "senderDistanceType": 0, # Тип доп. услуг отправителя [Number]
+                            # 0 - доп. услуги не нужны
+                            # 1 - СК
+                            # 2 - МОЖД
+                            # 3 - ТТК
+   "isDayByDay": False, # Необходим забор день в день [Boolean]
+   "isOpenCarReceiver": False, # Растентовка получателя [Boolean]
+   "receiverDistanceType": 0, # Тип доп. услуг отправителя [Number]
+                              # кодируется аналогично senderDistanceType
+   "isHyperMarket": False, # признак гипермаркета [Boolean]
+   "calcDate": "2014-01-21", # расчетная дата [Date]
+   "isInsurance": True, # Страхование [Boolean]
+   "isInsurancePrice": 0, # Оценочная стоимость, руб [Number]
+   "isPickUp": False, # Нужен забор [Boolean]
+   "isDelivery": False, # Нужна доставка [Boolean]
+   "Cargos": [{ # Данные о грузах [Array]
+      "length": 0, # Длина груза, м [Number]
+      "width": 0, # Ширина груза, м [Number]
+      "height": 0, # Высота груза, м [Number]
+      "volume": 0, # Объем груза, м3 [Number]
+      "maxSize": 3.2, # Максимальный габарит, м [Number]
+      "isHP": False, # Жесткая упаковка [Boolean]
+      "sealingPositionsCount": 0, # Количество мест для пломбировки [Number]
+      "weight": 10, # Вес, кг [Number]
+      "overSize": False # Негабаритный груз [Boolean]
+   },]
+}
+
 def curl_setopt_array(curl, opts):
     for key in opts:
         curl.setopt(getattr(curl, key), opts[key])
@@ -78,6 +111,7 @@ class PecomCabinet(object):
                'USERPWD': "%s:%s" % (self.__api_login, self.__api_key),
                'ENCODING': 'gzip',
                'HTTPHEADER': ['Content-Type: application/json; charset=utf-8',],
+               'NOSIGNAL' : 1 # see http://stackoverflow.com/questions/9191668/error-longjmp-causes-uninitialized-stack-frame
                }
        opts.update(self.__curl_opts)
        curl_setopt_array(self.__ch, opts)
@@ -106,7 +140,10 @@ class PecomCabinet(object):
         curl_setopt_array(self.__ch, { 'URL' : self.__construct_api_url(controller, action),
                                        'POSTFIELDS' : json_data,
                                        })
-        self.__ch.perform()
+        try:
+            self.__ch.perform()
+        except pycurl.error as e:
+            raise PecomCabinetException(e)
         result = self.__buffer.getvalue()
         if self.__ch.errstr():
             raise PecomCabinetException(self.__ch.c.errstr())
@@ -159,3 +196,19 @@ class PecomCabinet(object):
             return res['branches'], 0
         else:
             return None, 'no_branches_found'
+        
+    def calculate(self, payload):
+        """
+        Calculates shipping charge using API.
+        See: https://kabinet.pecom.ru/api/v1/help/calculator#toc-method-calculateprice
+        """
+        data = PECOM_CALC_OPTIONS
+        data.update(payload)
+        
+        res = []
+        
+        try:
+            res = self.call('calculator', 'calculateprice', data)
+        except PecomCabinetException as e:
+            return None, e
+        return res, 0
