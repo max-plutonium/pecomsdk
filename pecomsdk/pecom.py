@@ -58,12 +58,14 @@ PECOM_CALC_OPTIONS = {
 def curl_setopt_array(curl, opts):
     for key in opts:
         curl.setopt(getattr(curl, key), opts[key])
-        
+
+
 class PecomCabinetException(Exception):
     """
     PecomCabinet class can raise this exception
     """
     pass
+
 
 class PecomCabinet(object):
     """
@@ -77,13 +79,13 @@ class PecomCabinet(object):
     __api_key = ''
 
     # Base URL
-    __api_url = '';
+    __api_url = ''
 
     # CURL options overrides
     __curl_opts = {}
     
     # CURL instance
-    __ch = None;
+    __ch = None
     
     # CURL IO buffer
     __buffer = None
@@ -149,10 +151,10 @@ class PecomCabinet(object):
             raise PecomCabinetException(self.__ch.c.errstr())
         else:
             http_code = self.__ch.getinfo(pycurl.HTTP_CODE)
-            if http_code <> 200:
+            if http_code != 200:
                 raise PecomCabinetException("HTTP Error code: %d" % http_code)
             else:
-                result = json.loads(result)
+                result = json.loads(str(result, encoding='utf-8'))
         self.__buffer.truncate(0)
         self.__buffer.seek(0)
         return result
